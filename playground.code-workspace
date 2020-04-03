@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"new": "cpp",
+			"cmath": "cpp",
+			"random": "cpp",
+			"limits": "cpp"
+		},
+		"buck.projectConfig": {
+			"projectPath": "/home/jared/Documents/sandbox/playground",
+			"flavor": [],
+			"target": "//:demo",
+			"platform": "linux-x86_64"
+		}
+	}
+}
