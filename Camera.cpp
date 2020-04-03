@@ -2,19 +2,31 @@
 #include "Camera.h"
 #include "RenderPipeline.h"
 
+const FbxVector4 sUp(0,1,0);
+FbxVector4 sEye(0,75,300);
+FbxVector4 sTarget(0,75,0);
+
+void
+Camera::LookAtRelative(double dx, double dy) {
+    sTarget[0] += dx;
+    sTarget[1] += dy;
+}
+
+void
+Camera::MoveBy(double dx, double dz) {
+    sEye[0] += dx;
+    sEye[2] += dz;    
+    sTarget[0] += dx;
+    sTarget[2] += dz;
+}
 
 // Set the view to the current camera settings.
 void 
-Camera::SetCamera(
-    FbxScene* pScene, 
-    const FbxArray<FbxNode*>& pCameraArray,
+Camera::SetViewportAndCamera(
     int pWindowWidth, 
     int pWindowHeight)
 {
     // Compute the camera position and direction.
-    FbxVector4 lEye(0,75,300);
-    FbxVector4 lTarget(0,75,0);
-    FbxVector4 lUp(0,1,0);
     double lNearPlane = 0.01;
     double lFarPlane = 4000.0;
     double lFieldOfView = 45.0;
@@ -39,7 +51,7 @@ Camera::SetCamera(
     view_location = RenderPipeline::GetUniformLocation("view");
     if (view_location != -1) {
         FbxMatrix lView;
-        lView.SetLookAtRH( lEye, lTarget, lUp );
+        lView.SetLookAtRH( sEye, sTarget, sUp );
         ConvertFbxToLinmath( (const double*)lView, lConvertedBuffer, 16 );
         glUniformMatrix4fv(view_location, 1, GL_FALSE, (const GLfloat*)lConvertedBuffer );
     }
@@ -47,7 +59,7 @@ Camera::SetCamera(
     // Pass the eye position.
     eye_position_location = RenderPipeline::GetUniformLocation("eye_position");
     if ( eye_position_location != -1 ) {
-        ConvertFbxToLinmath( (const double*)lEye, lConvertedBuffer, 4 );
+        ConvertFbxToLinmath( (const double*)sEye, lConvertedBuffer, 4 );
         glUniform4fv(eye_position_location, 1, (const GLfloat*)lConvertedBuffer );
     }
 

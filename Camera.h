@@ -5,9 +5,11 @@
 
 namespace Camera {
 
-    void SetCamera(
-        FbxScene* pScene, 
-        const FbxArray<FbxNode*>& pCameraArray,
+    void MoveBy(double dx, double dz);
+
+    void LookAtRelative(double dx, double dy);
+
+    void SetViewportAndCamera(
         int pWindowWidth, 
         int pWindowHeight);
 

@@ -17,6 +17,11 @@ error_callback(
     fprintf(stderr, "Error: %s\n", description);
 }
 
+static bool IsLeftKeyDown = false;
+static bool IsRightKeyDown = false;
+static bool IsForwardKeyDown = false;
+static bool IsBackwardKeyDown = false;
+
 static void 
 key_callback(
     GLFWwindow* window, 
@@ -29,6 +34,39 @@ key_callback(
     {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
+    else if (key == GLFW_KEY_A) {
+        IsLeftKeyDown = (action != GLFW_RELEASE);
+    }
+    else if (key == GLFW_KEY_D) {
+        IsRightKeyDown = (action != GLFW_RELEASE);
+    }
+    else if (key == GLFW_KEY_W) {
+        IsForwardKeyDown = (action != GLFW_RELEASE);
+    }
+    else if (key == GLFW_KEY_S) {
+        IsBackwardKeyDown = (action != GLFW_RELEASE);
+    }
+}
+
+static void
+cursor_position_callback(
+    GLFWwindow* window, 
+    double xpos, 
+    double ypos) 
+{
+    // I think I want to relative motion sooooo
+    static bool hasFirstValue = false;
+    static double last_xpos, last_ypos;
+
+    if (hasFirstValue) {
+        double dx = last_xpos - xpos;
+        double dy = ypos - last_ypos;
+        Camera::LookAtRelative( dx, dy );
+    }
+
+    hasFirstValue = true;
+    last_xpos = xpos;
+    last_ypos = ypos;
 }
 
 void GLAPIENTRY
@@ -75,6 +113,7 @@ main(
     }
 
     glfwSetKeyCallback(window, key_callback);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
 
     glfwMakeContextCurrent(window);
     gladLoadGL(glfwGetProcAddress);
@@ -120,8 +159,15 @@ main(
         // Draw the front face only, except for the texts and lights.
         glEnable(GL_CULL_FACE);
 
+        vec2 camera_movement = {0,0};
+        if (IsForwardKeyDown) camera_movement[1] -= 5.;
+        if (IsBackwardKeyDown) camera_movement[1] += 5.;
+        if (IsLeftKeyDown) camera_movement[0] -= 5.;
+        if (IsRightKeyDown) camera_movement[0] += 5.;
+        Camera::MoveBy( camera_movement[0], camera_movement[1] );
+
         // Set the view to the current camera settings.
-        Camera::SetCamera(lScene, lCameraArray, lWindowWidth, lWindowHeight);
+        Camera::SetViewportAndCamera(lWindowWidth, lWindowHeight);
 
         // Iterate the scene.
         InitializeLights( lScene );
