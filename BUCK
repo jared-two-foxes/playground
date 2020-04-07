@@ -54,6 +54,8 @@ cxx_binary(
         'Camera.cpp',
         'DrawScene.cpp',
         'Fbx.cpp',
+        'Grid.cpp',
+        'RenderObjects.cpp',
         'RenderPipeline.cpp',
         'targa.cpp',
     ],

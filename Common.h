@@ -8,6 +8,8 @@
 #include <fbxsdk.h>
 #include "linmath.h"
 
+#include <assert.h>
+#include <vector>
 
 void ConvertFbxToLinmath( const double* pDouble, GLfloat* pFloat, std::size_t n );
 

@@ -1,7 +1,9 @@
 
 #include "DrawScene.h"
 #include "Fbx.h"
+#include "RenderObjects.h"
 #include "RenderPipeline.h"
+
 
 FbxAMatrix GetPoseMatrix(FbxPose* pPose, int pNodeIndex);
 FbxAMatrix GetGeometry(FbxNode* pNode);
@@ -106,20 +108,6 @@ DrawNodeRecursive(
 }
 
 
-// Draw a cross hair where the node is located.
-void 
-DrawNull(FbxAMatrix& pGlobalPosition)
-{
-    //GlDrawCrossHair(pGlobalPosition);
-}
-
-// Draw a small box where the node is located.
-void 
-DrawMarker(FbxAMatrix& pGlobalPosition)
-{
-    //GlDrawMarker(pGlobalPosition);  
-}
-
 void 
 DrawNode(
     FbxNode* pNode, 
@@ -152,6 +140,21 @@ DrawNode(
     }
 }
 
+
+// Draw a cross hair where the node is located.
+void 
+DrawNull(FbxAMatrix& pGlobalPosition)
+{
+    //GlDrawCrossHair(pGlobalPosition);
+}
+
+// Draw a small box where the node is located.
+void 
+DrawMarker(FbxAMatrix& pGlobalPosition)
+{
+    //GlDrawMarker(pGlobalPosition);  
+}
+
 // Draw the vertices of a mesh.
 void 
 DrawMesh(
@@ -168,62 +171,11 @@ DrawMesh(
     }
 
     const MeshCache* lMeshCache = static_cast<const MeshCache*>(lMesh->GetUserDataPtr());
-
-    // If it has some defomer connection, update the vertices position
-    const bool lHasVertexCache = lMesh->GetDeformerCount(FbxDeformer::eVertexCache) &&
-	 	(static_cast<FbxVertexCacheDeformer*>(lMesh->GetDeformer(0, FbxDeformer::eVertexCache)))->Active.Get();
-    const bool lHasShape = lMesh->GetShapeCount() > 0;
-    const bool lHasSkin = lMesh->GetDeformerCount(FbxDeformer::eSkin) > 0;
-    const bool lHasDeformation = lHasVertexCache || lHasShape || lHasSkin;
-
-    FbxVector4* lVertexArray = NULL;
-    if (!lMeshCache || lHasDeformation)
-    {
-        lVertexArray = new FbxVector4[lVertexCount];
-        memcpy(lVertexArray, lMesh->GetControlPoints(), lVertexCount * sizeof(FbxVector4));
-    }
-
-    //@todo: Push this as the model matrix [jared.watt]
-    GLint model_location = RenderPipeline::GetUniformLocation("model");
-    if (model_location != -1) {
-        GLfloat lConvertedBuffer[16];
-        ConvertFbxToLinmath((const GLdouble*)pGlobalPosition, lConvertedBuffer, 16 );
-        glUniformMatrix4fv(model_location, 1, GL_FALSE, lConvertedBuffer );
-    }
-
-    
-    
     if (lMeshCache)
     {
-        BeginMeshCacheDraw(lMeshCache);
-        
-        const int lSubMeshCount = lMeshCache->SubMeshes.GetCount();
-        for (int lIndex = 0; lIndex < lSubMeshCount; ++lIndex)
-        {
-            // const FbxSurfaceMaterial * lMaterial = pNode->GetMaterial(lIndex);
-            // if (lMaterial)
-            // {
-            //     const MaterialCache * lMaterialCache = static_cast<const MaterialCache *>(lMaterial->GetUserDataPtr());
-            //     if (lMaterialCache)
-            //     {
-            //         SetCurrentMaterialCache( lMaterialCache );
-            //     }
-            // }
-            // else
-            // {
-            //     // Draw green for faces without material
-            //     SetDefaultMaterialCache();
-            // }
-         
-            DrawMeshCache( lMeshCache, lIndex );
-        }
-
-        EndMeshCacheDraw( lMeshCache );
+        DrawMeshCache(lMeshCache, pGlobalPosition);
     }
-
-    //glPopMatrix();
-
-    delete [] lVertexArray;
+    
 }
 
 

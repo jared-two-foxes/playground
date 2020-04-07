@@ -1,22 +1,14 @@
 
 #include "Fbx.h"
-#include "RenderPipeline.h"
 #include "targa.h"
 
 
 namespace {
-    const GLfloat BLACK_COLOR[] = {0.0f, 0.0f, 0.0f, 1.0f};
-    const GLfloat GREEN_COLOR[] = {0.0f, 1.0f, 0.0f, 1.0f};
-    const GLfloat WHITE_COLOR[] = {1.0f, 1.0f, 1.0f, 1.0f};
-    
     const int TRIANGLE_VERTEX_COUNT = 3;
 
-    // Four floats for every position.
-    const int POSITION_STRIDE = 4;
-    // Three floats for every normal.
-    const int NORMAL_STRIDE = 3;
-    // Two floats for every UV.
-    const int UV_STRIDE = 2;
+    const int POSITION_STRIDE = 4;  //< Four floats for every position.
+    const int NORMAL_STRIDE = 3;    //< Three floats for every normal.
+    const int UV_STRIDE = 2;        //< Two floats for every UV.
 
     const GLfloat DEFAULT_LIGHT_POSITION[] = {0.0f, 0.0f, 0.0f, 1.0f};
     const GLfloat DEFAULT_DIRECTION_LIGHT_POSITION[] = {0.0f, 0.0f, 1.0f, 0.0f};
@@ -27,8 +19,6 @@ namespace {
 
 FbxManager* lSdkManager;
 FbxImporter* lImporter;
-
-void LoadCacheRecursive(FbxNode * pNode, bool pSupportVBO);
 
 
 void ConvertFbxToLinmath( const double* pDouble, GLfloat* pFloat, std::size_t n ) {
@@ -75,7 +65,7 @@ void DestroySdkObjects(FbxManager* pManager/*, bool pExitStatus*/)
 void InitFbx()
 {
     // Create SDK manager.    
-    InitializeSdkObjects(lSdkManager/*, lScene*/);
+    InitializeSdkObjects(lSdkManager);
 }
 
 
@@ -123,6 +113,64 @@ LoadTextureFromFile( const FbxString & pFilePath, unsigned int & pTextureObject 
     }
 
     return false;
+}
+
+
+// Bake node attributes and materials under this node recursively.
+// Currently only mesh, light and material.
+void LoadCacheRecursive(FbxNode * pNode, bool pSupportVBO)
+{
+    // Bake material and hook as user data.
+    const int lMaterialCount = pNode->GetMaterialCount();
+    for (int lMaterialIndex = 0; lMaterialIndex < lMaterialCount; ++lMaterialIndex)
+    {
+        FbxSurfaceMaterial * lMaterial = pNode->GetMaterial(lMaterialIndex);
+        if (lMaterial && !lMaterial->GetUserDataPtr())
+        {
+            MaterialCache* lMaterialCache = InitializeMaterialCache(lMaterial);
+            if (lMaterialCache) 
+            {
+                lMaterial->SetUserDataPtr(lMaterialCache);
+            }
+        }
+    }
+
+    FbxNodeAttribute* lNodeAttribute = pNode->GetNodeAttribute();
+    if (lNodeAttribute)
+    {
+        // Bake mesh as VBO(vertex buffer object) into GPU.
+        if (lNodeAttribute->GetAttributeType() == FbxNodeAttribute::eMesh)
+        {
+            FbxMesh* lMesh = pNode->GetMesh();
+            if (pSupportVBO && lMesh && !lMesh->GetUserDataPtr())
+            {
+                MeshCache* lMeshCache = InitializeMeshCache(lMesh); 
+                if ( lMeshCache ) 
+                {
+                    lMesh->SetUserDataPtr(lMeshCache);
+                }
+            }
+        }
+        // Bake light properties.
+        else if (lNodeAttribute->GetAttributeType() == FbxNodeAttribute::eLight)
+        {
+            FbxLight * lLight = pNode->GetLight();
+            if (lLight && !lLight->GetUserDataPtr())
+            {
+                LightCache* lLightCache = InitializeLightCache(lLight);
+                if (lLightCache) 
+                {
+                    lLight->SetUserDataPtr(lLightCache);
+                }
+            }
+        }
+    }
+
+    const int lChildCount = pNode->GetChildCount();
+    for (int lChildIndex = 0; lChildIndex < lChildCount; ++lChildIndex)
+    {
+        LoadCacheRecursive(pNode->GetChild(lChildIndex), pSupportVBO);
+    }
 }
 
 void LoadCacheRecursive(FbxScene * pScene, bool pSupportVBO)
@@ -180,63 +228,6 @@ void LoadCacheRecursive(FbxScene * pScene, bool pSupportVBO)
     }
 
     LoadCacheRecursive(pScene->GetRootNode(), pSupportVBO);
-}
-
-// Bake node attributes and materials under this node recursively.
-// Currently only mesh, light and material.
-void LoadCacheRecursive(FbxNode * pNode, bool pSupportVBO)
-{
-    // Bake material and hook as user data.
-    const int lMaterialCount = pNode->GetMaterialCount();
-    for (int lMaterialIndex = 0; lMaterialIndex < lMaterialCount; ++lMaterialIndex)
-    {
-        FbxSurfaceMaterial * lMaterial = pNode->GetMaterial(lMaterialIndex);
-        if (lMaterial && !lMaterial->GetUserDataPtr())
-        {
-            MaterialCache* lMaterialCache = InitializeMaterialCache(lMaterial);
-            if (lMaterialCache) 
-            {
-                lMaterial->SetUserDataPtr(lMaterialCache);
-            }
-        }
-    }
-
-    FbxNodeAttribute* lNodeAttribute = pNode->GetNodeAttribute();
-    if (lNodeAttribute)
-    {
-        // Bake mesh as VBO(vertex buffer object) into GPU.
-        if (lNodeAttribute->GetAttributeType() == FbxNodeAttribute::eMesh)
-        {
-            FbxMesh* lMesh = pNode->GetMesh();
-            if (pSupportVBO && lMesh && !lMesh->GetUserDataPtr())
-            {
-                MeshCache* lMeshCache = InitializeMeshCache(lMesh); 
-                if ( lMeshCache ) 
-                {
-                    lMesh->SetUserDataPtr(lMeshCache);
-                }
-            }
-        }
-        // Bake light properties.
-        else if (lNodeAttribute->GetAttributeType() == FbxNodeAttribute::eLight)
-        {
-            FbxLight * lLight = pNode->GetLight();
-            if (lLight && !lLight->GetUserDataPtr())
-            {
-                LightCache* lLightCache = InitializeLightCache(lLight);
-                if (lLightCache) 
-                {
-                    lLight->SetUserDataPtr(lLightCache);
-                }
-            }
-        }
-    }
-
-    const int lChildCount = pNode->GetChildCount();
-    for (int lChildIndex = 0; lChildIndex < lChildCount; ++lChildIndex)
-    {
-        LoadCacheRecursive(pNode->GetChild(lChildIndex)/*, pAnimLayer*/, pSupportVBO);
-    }
 }
 
 
@@ -450,18 +441,6 @@ void PrintScene(FbxScene* lScene)
     }
 }
 
-MeshCache::MeshCache() : 
-    HasNormal(false), 
-    HasUV(false), 
-    AllByControlPoints(true)
-{
-    // Reset every VBO to zero, which means no buffer.
-    for (int lVBOIndex = 0; lVBOIndex < VBO_COUNT; ++lVBOIndex)
-    {
-        VBONames[lVBOIndex] = 0;
-    }
-}
-
 MeshCache* InitializeMeshCache( const FbxMesh* pMesh ) 
 {
     if (!pMesh->GetNode()) 
@@ -482,53 +461,40 @@ MeshCache* InitializeMeshCache( const FbxMesh* pMesh )
         lMaterialMappingMode = pMesh->GetElementMaterial()->GetMappingMode();
         if (lMaterialIndice && lMaterialMappingMode == FbxGeometryElement::eByPolygon)
         {
-            //assert(lMaterialIndice->GetCount() == lPolygonCount);
+            assert(lMaterialIndice->GetCount() == lPolygonCount);
             if (lMaterialIndice->GetCount() == lPolygonCount)
             {
                 // Count the faces of each material
                 for (int lPolygonIndex = 0; lPolygonIndex < lPolygonCount; ++lPolygonIndex)
                 {
                     const int lMaterialIndex = lMaterialIndice->GetAt(lPolygonIndex);
-                    if (pMeshCache->SubMeshes.GetCount() < lMaterialIndex + 1)
+                    if (pMeshCache->SubMeshes.size() < lMaterialIndex + 1)
                     {
-                        pMeshCache->SubMeshes.Resize(lMaterialIndex + 1);
+                        pMeshCache->SubMeshes.resize(lMaterialIndex + 1);
                     }
-                    if (pMeshCache->SubMeshes[lMaterialIndex] == NULL)
-                    {
-                        pMeshCache->SubMeshes[lMaterialIndex] = new SubMesh;
-                    }
-                    pMeshCache->SubMeshes[lMaterialIndex]->TriangleCount += 1;
-                }
-
-                // Make sure we have no "holes" (NULL) in the SubMeshes table. This can happen
-                // if, in the loop above, we resized the SubMeshes by more than one slot.
-                for (int i = 0; i < pMeshCache->SubMeshes.GetCount(); i++)
-                {
-                    if (pMeshCache->SubMeshes[i] == NULL) {
-                        pMeshCache->SubMeshes[i] = new SubMesh;
-                    }
+                    
+                    pMeshCache->SubMeshes[lMaterialIndex].TriangleCount += 1;
                 }
 
                 // Record the offset (how many vertex)
-                const int lMaterialCount = pMeshCache->SubMeshes.GetCount();
+                const int lMaterialCount = pMeshCache->SubMeshes.size();
                 int lOffset = 0;
                 for (int lIndex = 0; lIndex < lMaterialCount; ++lIndex)
                 {
-                    pMeshCache->SubMeshes[lIndex]->IndexOffset = lOffset;
-                    lOffset += pMeshCache->SubMeshes[lIndex]->TriangleCount * 3;
+                    pMeshCache->SubMeshes[lIndex].IndexOffset = lOffset;
+                    lOffset += pMeshCache->SubMeshes[lIndex].TriangleCount * 3;
                     // This will be used as counter in the following procedures, reset to zero
-                    pMeshCache->SubMeshes[lIndex]->TriangleCount = 0;
+                    pMeshCache->SubMeshes[lIndex].TriangleCount = 0;
                 }
-                //assert(lOffset == lPolygonCount * 3);
+                assert(lOffset == lPolygonCount * 3);
             }
         }
     }
 
     // All faces will use the same material.
-    if (pMeshCache->SubMeshes.GetCount() == 0)
+    if (pMeshCache->SubMeshes.size() == 0)
     {
-        pMeshCache->SubMeshes.Resize(1);
-        pMeshCache->SubMeshes[0] = new SubMesh();
+        pMeshCache->SubMeshes.resize(1);
     }
 
     // Congregate all the data of a mesh to be cached in VBOs.
@@ -638,7 +604,6 @@ MeshCache* InitializeMeshCache( const FbxMesh* pMesh )
                 lUVs[lIndex * UV_STRIDE + 1] = static_cast<float>(lCurrentUV[1]);
             }
         }
-
     }
 
     int lVertexCount = 0;
@@ -652,8 +617,8 @@ MeshCache* InitializeMeshCache( const FbxMesh* pMesh )
         }
 
         // Where should I save the vertex attribute index, according to the material
-        const int lIndexOffset = pMeshCache->SubMeshes[lMaterialIndex]->IndexOffset +
-            pMeshCache->SubMeshes[lMaterialIndex]->TriangleCount * 3;
+        const int lIndexOffset = pMeshCache->SubMeshes[lMaterialIndex].IndexOffset +
+            pMeshCache->SubMeshes[lMaterialIndex].TriangleCount * 3;
         for (int lVerticeIndex = 0; lVerticeIndex < TRIANGLE_VERTEX_COUNT; ++lVerticeIndex)
         {
             const int lControlPointIndex = pMesh->GetPolygonVertex(lPolygonIndex, lVerticeIndex);
@@ -695,7 +660,7 @@ MeshCache* InitializeMeshCache( const FbxMesh* pMesh )
 			}
             ++lVertexCount;
         }
-        pMeshCache->SubMeshes[lMaterialIndex]->TriangleCount += 1;
+        pMeshCache->SubMeshes[lMaterialIndex].TriangleCount += 1;
     }
 
     // Create VBOs
@@ -725,80 +690,6 @@ MeshCache* InitializeMeshCache( const FbxMesh* pMesh )
     delete [] lIndices;
 
     return pMeshCache;
-}
-
-void 
-BeginMeshCacheDraw(const MeshCache* pMeshCache)
-{
-    //@todo: Update all of this to use the VertexAttribPointer stuff. [jared.watt]
-    
-    //@note: So we can assume that all of the attrib arrays are closely packed as 
-    //       we are using interleaved arrays for each attrib.
-
-    // Push OpenGL attributes.
-    glPushAttrib(GL_TEXTURE_BIT);
-
-    // Set vertex position array.
-    glBindBuffer(GL_ARRAY_BUFFER, pMeshCache->VBONames[MeshCache::VERTEX_VBO]);
-    GLuint position_location = RenderPipeline::GetAttributeLocation("position");
-    glEnableVertexAttribArray(position_location);
-    glVertexAttribPointer(position_location, POSITION_STRIDE, GL_FLOAT, GL_FALSE, /*POSITION_STRIDE*sizeof(GL_FLOAT)*/0, (void*)0);
-
-    // Set normal array.
-    if (pMeshCache->HasNormal)
-    {
-        glBindBuffer(GL_ARRAY_BUFFER, pMeshCache->VBONames[MeshCache::NORMAL_VBO]);
-        GLuint normal_location = RenderPipeline::GetAttributeLocation("normal");
-        glEnableVertexAttribArray(normal_location);
-        glVertexAttribPointer(normal_location, NORMAL_STRIDE, GL_FLOAT, GL_FALSE, /*POSITION_STRIDE*sizeof(GL_FLOAT)*/0, (void*)0);
-    }
-    
-    // Set UV array.
-    // if (pMeshCache->HasUV)
-    // {
-    //     glBindBuffer(GL_ARRAY_BUFFER, pMeshCache->VBONames[MeshCache::UV_VBO]);
-    //     glTexCoordPointer(UV_STRIDE, GL_FLOAT, 0, 0);
-    //     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    // }
-
-    // Set index array.
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pMeshCache->VBONames[MeshCache::INDEX_VBO]);
-
-    // glEnable(GL_TEXTURE_2D);
-}
-
-void 
-DrawMeshCache(const MeshCache* pMeshCache, int pMaterialIndex)
-{
-#if _MSC_VER >= 1900 && defined(_WIN64)
-	// this warning occurs when building 64bit.
-	#pragma warning( push )
-	#pragma warning( disable : 4312)
-#endif
-
-    // Where to start.
-    GLsizei lOffset = pMeshCache->SubMeshes[pMaterialIndex]->IndexOffset * sizeof(unsigned int);
-    const GLsizei lElementCount = pMeshCache->SubMeshes[pMaterialIndex]->TriangleCount * TRIANGLE_VERTEX_COUNT;
-    glDrawElements(GL_TRIANGLES, lElementCount, GL_UNSIGNED_INT, reinterpret_cast<const GLvoid *>(lOffset));
-
-#if _MSC_VER >= 1900 && defined(_WIN64)
-	#pragma warning( pop )
-#endif
-}
-
-void 
-EndMeshCacheDraw(const MeshCache* pMeshCache)
-{
-    // Reset VBO binding.
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    // Pop OpenGL attributes.
-    glPopAttrib();
-    // glPopAttrib();
-    // glPopAttrib();
-    // glPopAttrib();
 }
 
 
@@ -842,18 +733,6 @@ GetMaterialProperty(
     return lResult;
 }
 
-ColorChannel::ColorChannel() : 
-    TextureName(0)
-{
-    Colour[0] = 0.0f;
-    Colour[1] = 0.0f;
-    Colour[2] = 0.0f;
-    Colour[3] = 1.0f;
-}
-
-MaterialCache::MaterialCache() : 
-    Shinness(0)
-{}
 
 MaterialCache* 
 InitializeMaterialCache( const FbxSurfaceMaterial * pMaterial ) 
@@ -895,40 +774,7 @@ InitializeMaterialCache( const FbxSurfaceMaterial * pMaterial )
 }
 
 
-void 
-SetCurrentMaterialCache( 
-    const MaterialCache* pMaterialCache )
-{
-    glMaterialfv(GL_FRONT, GL_EMISSION, pMaterialCache->Emissive.Colour);
-    glMaterialfv(GL_FRONT, GL_AMBIENT, pMaterialCache->Ambient.Colour);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, pMaterialCache->Diffuse.Colour);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, pMaterialCache->Specular.Colour);
-    glMaterialf(GL_FRONT, GL_SHININESS, pMaterialCache->Shinness);
-
-    glBindTexture(GL_TEXTURE_2D, pMaterialCache->Diffuse.TextureName);
-}
-
-bool 
-HasTexture( 
-    const MaterialCache* pMaterialCache )
-{
-    return pMaterialCache->Diffuse.TextureName != 0;
-}
-
-void 
-SetDefaultMaterialCache()
-{
-    glMaterialfv(GL_FRONT, GL_EMISSION, BLACK_COLOR);
-    glMaterialfv(GL_FRONT, GL_AMBIENT, BLACK_COLOR);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, GREEN_COLOR);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, BLACK_COLOR);
-    glMaterialf(GL_FRONT, GL_SHININESS, 0);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-}
- 
-
- // Find all the cameras under this node recursively.
+// Find all the cameras under this node recursively.
 void 
 FillCameraArrayRecursive(FbxNode* pNode, FbxArray<FbxNode*>& pCameraArray)
 {
@@ -960,28 +806,27 @@ FillCameraArray(FbxScene* pScene, FbxArray<FbxNode*>& pCameraArray)
     FillCameraArrayRecursive(pScene->GetRootNode(), pCameraArray);
 }
 
-LightCache::LightCache() : 
-    mType(FbxLight::ePoint)
-{}
 
 LightCache* 
 InitializeLightCache(const FbxLight* pLight)
 {
     LightCache* lLightCache = new LightCache();
 
-    lLightCache->mType = pLight->LightType.Get();
-
+    switch (pLight->LightType.Get())
+    {
+    case FbxLight::EType::eDirectional:
+        lLightCache->Type = LightCache::Type::Directional;
+        break;
+    default:
+        lLightCache->Type = LightCache::Type::Directional;
+        break;
+    }
+    
     FbxPropertyT<FbxDouble3> lColorProperty = pLight->Color;
     FbxDouble3 lLightColor = lColorProperty.Get();
-    lLightCache->mColorRed = static_cast<float>(lLightColor[0]);
-    lLightCache->mColorGreen = static_cast<float>(lLightColor[1]);
-    lLightCache->mColorBlue = static_cast<float>(lLightColor[2]);
-
-    if (lLightCache->mType == FbxLight::eSpot)
-    {
-        FbxPropertyT<FbxDouble> lConeAngleProperty = pLight->InnerAngle;
-        lLightCache->mConeAngle = static_cast<GLfloat>(lConeAngleProperty.Get());
-    }
+    lLightCache->Colour[0] = static_cast<float>(lLightColor[0]);
+    lLightCache->Colour[1] = static_cast<float>(lLightColor[1]);
+    lLightCache->Colour[2] = static_cast<float>(lLightColor[2]);
 
     return lLightCache;
 }

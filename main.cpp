@@ -3,6 +3,8 @@
 #include "Camera.h"
 #include "DrawScene.h"
 #include "Fbx.h"
+#include "Grid.h"
+#include "RenderObjects.h"
 #include "RenderPipeline.h"
 
 #include <stdlib.h>
@@ -83,6 +85,7 @@ MessageCallback( GLenum source,
             type, severity, message );
 }
 
+
 int
 main(
     int argc, 
@@ -112,8 +115,8 @@ main(
         return -1;
     }
 
-    glfwSetKeyCallback(window, key_callback);
-    glfwSetCursorPosCallback(window, cursor_position_callback);
+    // glfwSetKeyCallback(window, key_callback);
+    // glfwSetCursorPosCallback(window, cursor_position_callback);
 
     glfwMakeContextCurrent(window);
     gladLoadGL(glfwGetProcAddress);
@@ -147,6 +150,9 @@ main(
         vertex_shader, fragment_shader );
     RenderPipeline::UseProgram(program);
 
+    Grid lGrid = CreateGrid(50, 10.0f);
+    MeshCache lGridCache = InitializeMeshCache(&lGrid);
+
     while (!glfwWindowShouldClose(window))
     {   
         float ratio;
@@ -172,7 +178,7 @@ main(
         // Iterate the scene.
         InitializeLights( lScene );
         DrawNodeRecursive( lScene->GetRootNode(), lDummyGlobalPosition);
-        //DisplayGrid(lDummyGlobalPosition);
+        DrawMeshCache(&lGridCache, lDummyGlobalPosition);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
