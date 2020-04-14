@@ -17,9 +17,9 @@ FbxAMatrix GetGlobalPosition(
 
 void FillCameraArray(FbxScene* pScene, FbxArray<FbxNode*>& pCameraArray);
 
-MeshCache* InitializeMeshCache( const FbxMesh* pMesh );
+TextureCache* InitializeTextureCache( const FbxTexture * pTexture );
 MaterialCache* InitializeMaterialCache( const FbxSurfaceMaterial * pMaterial );
 LightCache* InitializeLightCache(const FbxLight * pLight);
-
+MeshCache* InitializeMeshCache( const FbxMesh* pMesh );
 
 #endif // FBX_HPP__

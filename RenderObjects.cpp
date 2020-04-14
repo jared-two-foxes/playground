@@ -16,6 +16,11 @@ const int UV_STRIDE = 2;                //< Two floats for every UV.
 
 
 
+TextureCache::TextureCache() :
+    Handle(-1)
+{}
+
+
 MeshCache::MeshCache() : 
     HasNormal(false), 
     HasUV(false), 
@@ -88,20 +93,16 @@ EndMeshCacheDraw(const MeshCache* pMeshCache)
 }
 
 
-// Draw the vertices of a mesh.
-void 
-DrawMeshCache(
-    const MeshCache* pMeshCache, 
-    FbxAMatrix& pGlobalPosition)
-{
-    assert(pMeshCache);
 
+void 
+DrawMeshCacheInternal(
+    const MeshCache* pMeshCache, 
+    mat4x4& pGlobalPosition)
+{
     // Bind the model location if required.
     GLint model_location = RenderPipeline::GetUniformLocation("model");
     if (model_location != -1) {
-        GLfloat lConvertedBuffer[16];
-        ConvertFbxToLinmath((const GLdouble*)pGlobalPosition, lConvertedBuffer, 16 );
-        glUniformMatrix4fv(model_location, 1, GL_FALSE, lConvertedBuffer );
+        glUniformMatrix4fv(model_location, 1, GL_FALSE, (const GLfloat*)pGlobalPosition );
     }
     
     BeginMeshCacheDraw(pMeshCache);
@@ -128,6 +129,33 @@ DrawMeshCache(
     }
 
     EndMeshCacheDraw( pMeshCache );
+}
+
+void 
+DrawMeshCache(
+    const MeshCache* pMeshCache, 
+    vec3& pPosition)
+{
+    assert(pMeshCache);
+
+    mat4x4 m;
+    mat4x4_translate(m, pPosition[0], pPosition[1], pPosition[2]);
+
+    DrawMeshCacheInternal(pMeshCache, m);
+}
+
+// Draw the vertices of a mesh.
+void 
+DrawMeshCache(
+    const MeshCache* pMeshCache,
+    FbxAMatrix& pGlobalPosition)
+{
+    assert(pMeshCache);
+
+    mat4x4 lConvertedBuffer;
+    ConvertFbxToLinmath((const GLdouble*)pGlobalPosition, (GLfloat*)lConvertedBuffer, 16 );
+    
+    DrawMeshCacheInternal(pMeshCache, lConvertedBuffer);
 }
 
 

@@ -58,6 +58,7 @@ cxx_binary(
         'RenderObjects.cpp',
         'RenderPipeline.cpp',
         'targa.cpp',
+        'World.cpp'
     ],
     deps = [
         ':glad',

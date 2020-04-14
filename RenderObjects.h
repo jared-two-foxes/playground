@@ -4,6 +4,12 @@
 #include "Common.h"
 
 
+struct TextureCache 
+{
+    TextureCache();
+    GLuint Handle;
+}; 
+
 
 void DrawNull(FbxAMatrix& pGlobalPosition);
 void DrawMarker(FbxAMatrix& pGlobalPosition);
@@ -42,6 +48,7 @@ struct MeshCache
 
 // Draw the vertices of a mesh.
 void DrawMeshCache( const MeshCache* pNode, FbxAMatrix& pGlobalPosition);
+void DrawMeshCache( const MeshCache* pNode, vec3& pGlobalPosition);
 
 
 struct ColorChannel

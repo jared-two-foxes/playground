@@ -3,7 +3,7 @@
 
 
 // Creates a uniform N*N grid with dx spacing.
-Grid CreateGrid(uint32_t n, float dx) 
+Grid Grid_Create(uint32_t n, float dx) 
 {   
     Grid grid;
     grid.N = n;
@@ -28,6 +28,22 @@ Grid CreateGrid(uint32_t n, float dx)
     } 
 
     return grid;
+}
+
+void Grid_MutateY(Grid* pGrid, std::function<float (float, float)> fn)
+{
+    uint32_t lIndex = 0;
+    for (int i = 0; i < pGrid->N; ++i) 
+    {
+        for (int j = 0; j < pGrid->N; ++j) 
+        {
+            float x = pGrid->vertices[lIndex+0];
+            float z = pGrid->vertices[lIndex+2];
+            float y = fn(x,z);
+            pGrid->vertices[lIndex+1] = y;
+            lIndex += 4;
+        }
+    }
 }
 
 MeshCache InitializeMeshCache(const Grid* pGrid) 

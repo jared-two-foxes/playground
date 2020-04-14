@@ -6,9 +6,7 @@
 #include "Grid.h"
 #include "RenderObjects.h"
 #include "RenderPipeline.h"
-
-#include <stdlib.h>
-#include <stdio.h>
+#include "World.h"
 
 
 void 
@@ -85,7 +83,6 @@ MessageCallback( GLenum source,
             type, severity, message );
 }
 
-
 int
 main(
     int argc, 
@@ -131,12 +128,43 @@ main(
 //
     InitFbx();
 
+    const char* filename = "Male_LOWPOLYGON.fbx";
     FbxScene* lScene = CreateSceneObject("My Scene");
-    ImportScene( "Male_LOWPOLYGON.fbx", lScene );
+    ImportScene( filename, lScene );
 
     FbxArray<FbxNode*> lCameraArray;
     FillCameraArray(lScene, lCameraArray);
     FbxAMatrix lDummyGlobalPosition;
+
+    // Okay so now we have pulled teh scene out of the file, now what.
+    // Lets assume theres only one node that we are interested in here
+    // and we want to extract it so that we can draw it at a later
+    // date.  Also going to assume that the only thing I care about is
+    // the Mesh & Materials.
+
+    // I think what I want to do is create a structure similar in idea
+    // to the FbxScene and then we can "import" an entire Fbx scene
+    // into our "world".  
+    //  * This would decouple our render from the Fbx api
+    //  
+    // I also like the way that Fbx associates stuff with the nodes, 
+    // each node can have a group of "NodeAttributes" like lights and
+    // meshes associated with it keeping these things independant of 
+    // the actual nodes themselves.  
+    //
+    // I think theres probably a way to do this without the actual node
+    // graph concept which could be good.  Do I even need anything along
+    // those lines?  Can I get by with just a list of Mesh type objects?
+    //
+    // So I think the default technique will be to just "import" 
+    // the nodes of the scene into the "world" but I then need to 
+    // figure out how to handle association of these objects to 
+    // in app logic representations. s
+
+    WorldObject* lFileObject = World_ImportFbxScene( filename, lScene );
+    World_AddInstance( FbxVector4(50,0,0), lFileObject );
+    World_AddInstance( FbxVector4(-50,0,0), lFileObject );
+
 
 //
 // Setup the RenderPipeline Objects.
@@ -150,8 +178,12 @@ main(
         vertex_shader, fragment_shader );
     RenderPipeline::UseProgram(program);
 
-    Grid lGrid = CreateGrid(50, 10.0f);
+//
+// Setup the ground plane.
+//
+    Grid lGrid = Grid_Create(50, 10.0f);
     MeshCache lGridCache = InitializeMeshCache(&lGrid);
+    //@todo: Add the ground plane to the world [jared.watt]
 
     while (!glfwWindowShouldClose(window))
     {   
@@ -165,6 +197,7 @@ main(
         // Draw the front face only, except for the texts and lights.
         glEnable(GL_CULL_FACE);
 
+        // Camera Control.
         vec2 camera_movement = {0,0};
         if (IsForwardKeyDown) camera_movement[1] -= 5.;
         if (IsBackwardKeyDown) camera_movement[1] += 5.;
@@ -175,10 +208,10 @@ main(
         // Set the view to the current camera settings.
         Camera::SetViewportAndCamera(lWindowWidth, lWindowHeight);
 
-        // Iterate the scene.
-        InitializeLights( lScene );
-        DrawNodeRecursive( lScene->GetRootNode(), lDummyGlobalPosition);
-        DrawMeshCache(&lGridCache, lDummyGlobalPosition);
+        // Draw the World
+        //InitializeLights( lScene );
+        World_Draw();
+        DrawMeshCache(&lGridCache, lDummyGlobalPosition); //< Ground plane.
 
         glfwSwapBuffers(window);
         glfwPollEvents();

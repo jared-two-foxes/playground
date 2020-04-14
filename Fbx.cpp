@@ -180,50 +180,10 @@ void LoadCacheRecursive(FbxScene * pScene, bool pSupportVBO)
     for (int lTextureIndex = 0; lTextureIndex < lTextureCount; ++lTextureIndex)
     {
         FbxTexture * lTexture = pScene->GetTexture(lTextureIndex);
-        FbxFileTexture * lFileTexture = FbxCast<FbxFileTexture>(lTexture);
-        if (lFileTexture && !lFileTexture->GetUserDataPtr())
+        TextureCache* lTextureCache = InitializeTextureCache(lTexture);
+        if (lTextureCache)
         {
-            // Try to load the texture from absolute path
-            const FbxString lFileName = lFileTexture->GetFileName();
-            
-            // Only TGA textures are supported now.
-            if (lFileName.Right(3).Upper() != "TGA")
-            {
-                FBXSDK_printf("Only TGA textures are supported now: %s\n", lFileName.Buffer());
-                continue;
-            }
-
-            GLuint lTextureObject = 0;
-            bool lStatus = LoadTextureFromFile(lFileName, lTextureObject);
-
-            // const FbxString lAbsFbxFileName = FbxPathUtils::Resolve(pFbxFileName);
-            // const FbxString lAbsFolderName = FbxPathUtils::GetFolderName(lAbsFbxFileName);
-            // if (!lStatus)
-            // {
-            //     // Load texture from relative file name (relative to FBX file)
-            //     const FbxString lResolvedFileName = FbxPathUtils::Bind(lAbsFolderName, lFileTexture->GetRelativeFileName());
-            //     lStatus = LoadTextureFromFile(lResolvedFileName, lTextureObject);
-            // }
-
-            // if (!lStatus)
-            // {
-            //     // Load texture from file name only (relative to FBX file)
-            //     const FbxString lTextureFileName = FbxPathUtils::GetFileName(lFileName);
-            //     const FbxString lResolvedFileName = FbxPathUtils::Bind(lAbsFolderName, lTextureFileName);
-            //     lStatus = LoadTextureFromFile(lResolvedFileName, lTextureObject);
-            // }
-
-            //if (!lStatus)
-            {
-                FBXSDK_printf("Failed to load texture file: %s\n", lFileName.Buffer());
-                continue;
-            }
-
-            if (lStatus)
-            {
-                GLuint * lTextureName = new GLuint(lTextureObject);
-                lFileTexture->SetUserDataPtr(lTextureName);
-            }
+            lTexture->SetUserDataPtr(lTextureCache);
         }
     }
 
@@ -439,6 +399,60 @@ void PrintScene(FbxScene* lScene)
             PrintNode(lRootNode->GetChild(i));
         }
     }
+}
+
+TextureCache* InitializeTextureCache( const FbxTexture * pTexture )
+{
+    assert(pTexture != nullptr);
+
+    const FbxFileTexture * lFileTexture = FbxCast<FbxFileTexture>(pTexture);
+    if (lFileTexture && !lFileTexture->GetUserDataPtr())
+    {
+        // Try to load the texture from absolute path
+        const FbxString lFileName = lFileTexture->GetFileName();
+        
+        // Only TGA textures are supported now.
+        if (lFileName.Right(3).Upper() != "TGA")
+        {
+            FBXSDK_printf("Only TGA textures are supported now: %s\n", lFileName.Buffer());
+            return nullptr;
+        }
+
+        GLuint lTextureObject = 0;
+        bool lStatus = LoadTextureFromFile(lFileName, lTextureObject);
+
+        // const FbxString lAbsFbxFileName = FbxPathUtils::Resolve(pFbxFileName);
+        // const FbxString lAbsFolderName = FbxPathUtils::GetFolderName(lAbsFbxFileName);
+        // if (!lStatus)
+        // {
+        //     // Load texture from relative file name (relative to FBX file)
+        //     const FbxString lResolvedFileName = FbxPathUtils::Bind(lAbsFolderName, lFileTexture->GetRelativeFileName());
+        //     lStatus = LoadTextureFromFile(lResolvedFileName, lTextureObject);
+        // }
+
+        // if (!lStatus)
+        // {
+        //     // Load texture from file name only (relative to FBX file)
+        //     const FbxString lTextureFileName = FbxPathUtils::GetFileName(lFileName);
+        //     const FbxString lResolvedFileName = FbxPathUtils::Bind(lAbsFolderName, lTextureFileName);
+        //     lStatus = LoadTextureFromFile(lResolvedFileName, lTextureObject);
+        // }
+
+        if (!lStatus)
+        {
+            FBXSDK_printf("Failed to load texture file: %s\n", lFileName.Buffer());
+            return nullptr;
+        }
+
+        if (lStatus)
+        {
+            TextureCache* pCache = new TextureCache();
+            pCache->Handle = lTextureObject;
+            return pCache;
+        }
+    }
+
+    return nullptr;
 }
 
 MeshCache* InitializeMeshCache( const FbxMesh* pMesh ) 
