@@ -8,7 +8,7 @@
 #include "RenderPipeline.h"
 #include "World.h"
 
-
+ 
 void 
 error_callback(
     int error, 
@@ -16,11 +16,6 @@ error_callback(
 {
     fprintf(stderr, "Error: %s\n", description);
 }
-
-static bool IsLeftKeyDown = false;
-static bool IsRightKeyDown = false;
-static bool IsForwardKeyDown = false;
-static bool IsBackwardKeyDown = false;
 
 static void 
 key_callback(
@@ -34,19 +29,9 @@ key_callback(
     {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
-    else if (key == GLFW_KEY_A) {
-        IsLeftKeyDown = (action != GLFW_RELEASE);
-    }
-    else if (key == GLFW_KEY_D) {
-        IsRightKeyDown = (action != GLFW_RELEASE);
-    }
-    else if (key == GLFW_KEY_W) {
-        IsForwardKeyDown = (action != GLFW_RELEASE);
-    }
-    else if (key == GLFW_KEY_S) {
-        IsBackwardKeyDown = (action != GLFW_RELEASE);
-    }
 }
+
+FbxVector2 sMousePos;
 
 static void
 cursor_position_callback(
@@ -54,19 +39,38 @@ cursor_position_callback(
     double xpos, 
     double ypos) 
 {
-    // I think I want to relative motion sooooo
-    static bool hasFirstValue = false;
-    static double last_xpos, last_ypos;
+    sMousePos[0] = xpos;
+    sMousePos[1] = ypos;
+}
 
-    if (hasFirstValue) {
-        double dx = last_xpos - xpos;
-        double dy = ypos - last_ypos;
-        Camera::LookAtRelative( dx, dy );
+static void 
+mouse_button_callback(
+    GLFWwindow* window, 
+    int button, 
+    int action, 
+    int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    {
+        // Lets grab the screen ray based on click position!
+        NsRay lRay = Camera_ScreenToRay(sMousePos);
+
+        // Lets create a plane for the ground.
+        NsPlane lGroundPlane = { {0,1,0}, 0 };
+
+        // And finally see if we clicked somewhere thats going to intersect with the ground.
+        FbxVector4 lHitPoint;
+        bool hit = Intersect(lRay, lGroundPlane, &lHitPoint);
+
+        if ( hit ) 
+        {
+            printf("Ground was hit at [%.2f,%.2f]\n", lHitPoint[0], lHitPoint[2]);
+        }
+        else 
+        {
+            printf("Ground wasnt hit\n");
+        }        
     }
-
-    hasFirstValue = true;
-    last_xpos = xpos;
-    last_ypos = ypos;
 }
 
 void GLAPIENTRY
@@ -113,7 +117,8 @@ main(
     }
 
     // glfwSetKeyCallback(window, key_callback);
-    // glfwSetCursorPosCallback(window, cursor_position_callback);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
 
     glfwMakeContextCurrent(window);
     gladLoadGL(glfwGetProcAddress);
@@ -197,16 +202,11 @@ main(
         // Draw the front face only, except for the texts and lights.
         glEnable(GL_CULL_FACE);
 
-        // Camera Control.
-        vec2 camera_movement = {0,0};
-        if (IsForwardKeyDown) camera_movement[1] -= 5.;
-        if (IsBackwardKeyDown) camera_movement[1] += 5.;
-        if (IsLeftKeyDown) camera_movement[0] -= 5.;
-        if (IsRightKeyDown) camera_movement[0] += 5.;
-        Camera::MoveBy( camera_movement[0], camera_movement[1] );
 
         // Set the view to the current camera settings.
-        Camera::SetViewportAndCamera(lWindowWidth, lWindowHeight);
+        //@Todo: this function should really exist in the RenderObject
+        //   RenderPipeline space rather than in camera.
+        Camera_SetViewportAndCamera(lWindowWidth, lWindowHeight);
 
         // Draw the World
         //InitializeLights( lScene );

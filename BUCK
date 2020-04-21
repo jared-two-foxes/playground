@@ -55,9 +55,11 @@ cxx_binary(
         'DrawScene.cpp',
         'Fbx.cpp',
         'Grid.cpp',
+        'Intersect.cpp',
         'RenderObjects.cpp',
         'RenderPipeline.cpp',
         'targa.cpp',
+        'Transform.cpp',
         'World.cpp'
     ],
     deps = [

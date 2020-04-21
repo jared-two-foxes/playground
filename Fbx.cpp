@@ -27,6 +27,12 @@ void ConvertFbxToLinmath( const double* pDouble, GLfloat* pFloat, std::size_t n 
     }
 }
 
+void ConvertLinmathToFbx( const GLfloat* pFloat, double* pDouble, std::size_t n ) {
+    for (int i =0; i<n; ++i ) {
+        pDouble[i] = pFloat[i];
+    }
+}
+
 void InitializeSdkObjects( FbxManager*& pManager ) 
 {
     //The first thing to do is to create the FBX Manager which is the object allocator for almost all the classes in the SDK
