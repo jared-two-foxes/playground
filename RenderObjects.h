@@ -47,8 +47,8 @@ struct MeshCache
 };
 
 // Draw the vertices of a mesh.
-void DrawMeshCache( const MeshCache* pNode, FbxAMatrix& pGlobalPosition);
-void DrawMeshCache( const MeshCache* pNode, vec3& pGlobalPosition);
+void DrawMeshCache( const MeshCache* pNode, FbxAMatrix& pWorldTransform);
+void DrawMeshCache( const MeshCache* pNode, const FbxVector4& pGlobalPosition, const FbxQuaternion& rotation);
 
 
 struct ColorChannel

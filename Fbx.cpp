@@ -850,3 +850,16 @@ InitializeLightCache(const FbxLight* pLight)
 
     return lLightCache;
 }
+
+NsAxisAlignedBox Fbx_CalculateBounds( const FbxMesh* pMesh )
+{
+    int               lControlPointCount = pMesh->GetControlPointsCount();
+    const FbxVector4* lControlPoints     = pMesh->GetControlPoints();
+    NsAxisAlignedBox  lOut;
+    
+    for (int lIndex = 0; lIndex < lControlPointCount; ++lIndex) {
+        lOut = Expand( lOut, lControlPoints[lIndex]);
+    }
+
+    return lOut;
+}

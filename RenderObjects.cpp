@@ -97,12 +97,14 @@ EndMeshCacheDraw(const MeshCache* pMeshCache)
 void 
 DrawMeshCacheInternal(
     const MeshCache* pMeshCache, 
-    mat4x4& pGlobalPosition)
+    FbxAMatrix& pGlobalTransform)
 {
     // Bind the model location if required.
     GLint model_location = RenderPipeline::GetUniformLocation("model");
     if (model_location != -1) {
-        glUniformMatrix4fv(model_location, 1, GL_FALSE, (const GLfloat*)pGlobalPosition );
+        mat4x4 lConvertedBuffer;
+        ConvertFbxToLinmath((const GLdouble*)pGlobalTransform, (GLfloat*)lConvertedBuffer, 16 );
+        glUniformMatrix4fv(model_location, 1, GL_FALSE, (const GLfloat*)lConvertedBuffer );
     }
     
     BeginMeshCacheDraw(pMeshCache);
@@ -134,28 +136,25 @@ DrawMeshCacheInternal(
 void 
 DrawMeshCache(
     const MeshCache* pMeshCache, 
-    vec3& pPosition)
+    const FbxVector4& pPosition, 
+    const FbxQuaternion& pRotation)
 {
     assert(pMeshCache);
+    FbxAMatrix lTransform;
+    lTransform.SetTQS(pPosition, pRotation, FbxVector4(1,1,1));
 
-    mat4x4 m;
-    mat4x4_translate(m, pPosition[0], pPosition[1], pPosition[2]);
-
-    DrawMeshCacheInternal(pMeshCache, m);
+    DrawMeshCacheInternal(pMeshCache, lTransform);
 }
 
 // Draw the vertices of a mesh.
 void 
 DrawMeshCache(
     const MeshCache* pMeshCache,
-    FbxAMatrix& pGlobalPosition)
+    FbxAMatrix& pWorldTransform)
 {
     assert(pMeshCache);
 
-    mat4x4 lConvertedBuffer;
-    ConvertFbxToLinmath((const GLdouble*)pGlobalPosition, (GLfloat*)lConvertedBuffer, 16 );
-    
-    DrawMeshCacheInternal(pMeshCache, lConvertedBuffer);
+    DrawMeshCacheInternal(pMeshCache, pWorldTransform);
 }
 
 

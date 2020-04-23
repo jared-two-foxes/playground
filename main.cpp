@@ -4,6 +4,8 @@
 #include "DrawScene.h"
 #include "Fbx.h"
 #include "Grid.h"
+#include "Intersect.h"
+#include "Plane.h"
 #include "RenderObjects.h"
 #include "RenderPipeline.h"
 #include "World.h"
@@ -53,23 +55,20 @@ mouse_button_callback(
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
         // Lets grab the screen ray based on click position!
-        NsRay lRay = Camera_ScreenToRay(sMousePos);
-
-        // Lets create a plane for the ground.
-        NsPlane lGroundPlane = { {0,1,0}, 0 };
-
-        // And finally see if we clicked somewhere thats going to intersect with the ground.
-        FbxVector4 lHitPoint;
-        bool hit = Intersect(lRay, lGroundPlane, &lHitPoint);
-
-        if ( hit ) 
-        {
+        const NsPlane kGroundPlane = { {0,1,0}, 0 }; // Lets create a plane for the ground.
+        NsRay         lRay         = Camera_ScreenToRay(sMousePos);
+        FbxVector4    lHitPoint;
+            
+        const WorldActor* lSelectedObject = World_RayCast(lRay);
+        if (lSelectedObject) {
+            printf("Object (%s) was clicked\n", lSelectedObject->Name.c_str());
+        }
+        else if (Intersect(lRay, kGroundPlane, &lHitPoint)) {
             printf("Ground was hit at [%.2f,%.2f]\n", lHitPoint[0], lHitPoint[2]);
         }
-        else 
-        {
-            printf("Ground wasnt hit\n");
-        }        
+        else {
+            printf("Nothing was clicked\n");
+        }
     }
 }
 
@@ -164,12 +163,21 @@ main(
     // So I think the default technique will be to just "import" 
     // the nodes of the scene into the "world" but I then need to 
     // figure out how to handle association of these objects to 
-    // in app logic representations. s
+    // in app logic representations.
 
     WorldObject* lFileObject = World_ImportFbxScene( filename, lScene );
-    World_AddInstance( FbxVector4(50,0,0), lFileObject );
-    World_AddInstance( FbxVector4(-50,0,0), lFileObject );
+    World_AddInstance( FbxVector4(50,0,0), lFileObject, "obj1" );
+    World_AddInstance( FbxVector4(-50,0,0), lFileObject, "obj2" );
 
+    //@Note: [Jared.Watt, 21/04/2020]
+    //  It would be great to be able to get an AABB from the WorldObject, 
+    //  something like AABB aabb = GetAxisAlignedBounds(lFileOBject); 
+    //  which would then get passed to the world when we add it if we 
+    //  are interested in being able to select that object.
+    // 
+    //  I'm not sure what file that should belong to.  Will add it to world
+    //  for now...
+    NsAxisAlignedBox aabb = WorldObject_GetBounds(lFileObject);
 
 //
 // Setup the RenderPipeline Objects.

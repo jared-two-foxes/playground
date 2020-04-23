@@ -1,19 +1,8 @@
 
 #include "World.h"
 #include "Fbx.h"
+#include "Intersect.h"
 
-struct Location 
-{
-    vec3 position;
-    //quaternion rotation; //< ??
-};
-
-// This is an inworld representation of an object.
-struct Instance 
-{
-    Location WorldPosition;
-    WorldObject* Object;
-};
 
 //@todo: Convert these from pointers to pod arrays [jared.watt]
 std::vector<LightCache* > Lights;
@@ -22,22 +11,35 @@ std::vector<MeshCache* > Meshes;
 std::vector<TextureCache* > Textures;
 
 std::vector<WorldObject > Objects;
-std::vector<Instance  > Instances;
+std::vector<WorldActor  > Instances;
 
+
+NsAxisAlignedBox WorldObject_GetBounds(WorldObject* pObject)
+{
+    // @todo: [jared.watt 22/04/20]
+    //  This should iterate a list of primitives and generate the bounds based
+    //  on this.  This would solve the problem of dynamic Aabb during animations.
+    //
+    return pObject->Aabb;
+}
+
+NsAxisAlignedBox WorldActor_GetBounds(WorldActor* aActor)
+{
+    FbxMatrix lLocalTransform(aActor->WorldPosition.Position, 
+        aActor->WorldPosition.Rotation, FbxVector4(1,1,1));
+    return Transform(aActor->Object->Aabb, lLocalTransform);
+}
 
 void Fbx_ImportNodeRecursive(WorldObject* pObject, FbxNode* pNode) 
 {
-    // Determine the position of the node in world space.
-    FbxAMatrix lGlobalPosition = GetGlobalPosition(pNode, nullptr);
-    // Grab the translation from the global position.
-    FbxVector4 translation = lGlobalPosition.GetT();
-    // Convert it to our vec3 type
-    vec3 position;
-    ConvertFbxToLinmath((const GLdouble*)lGlobalPosition, position, 3 );
-
+    // @todo: [jared.watt, 23/04/20]
+    //   Handle the positioning of components based upon node position.  
+    // GetGlobalPosition(pNode, nullptr)
+    
     // Lets pull any FbxNodeAttributes that were interested in.
-    // @todo: Iterate all the NodeAttributes rather than assume 
-    //        the only thing that we care about is in the default node.
+    // @todo: [jared.watt, 22/04/20]
+    //   Iterate all the NodeAttributes rather than assume 
+    //   the only thing that we care about is in the default node.
     FbxNodeAttribute* lNodeAttribute = pNode->GetNodeAttribute();
     if (lNodeAttribute)
     {
@@ -58,6 +60,13 @@ void Fbx_ImportNodeRecursive(WorldObject* pObject, FbxNode* pNode)
                 // @todo: Check if this object already exists in the worlds
                 //        list [jared.watt]
                 Meshes.push_back(lMeshCache);
+
+                // For each mesh we can calculate its overall bounds and expand
+                // recorded object bounds where needed.
+                NsAxisAlignedBox aabb = Fbx_CalculateBounds(lMesh);
+                pObject->Aabb = Expand(pObject->Aabb, aabb);
+                
+                // Finally add it to the objects Meshes.
                 pObject->Meshes.push_back(lMeshCache);
             }
         }
@@ -76,12 +85,12 @@ void Fbx_ImportNodeRecursive(WorldObject* pObject, FbxNode* pNode)
     }
 }
 
-WorldObject* World_ImportFbxScene(const std::string& pName, FbxScene* pScene )
+WorldObject* World_ImportFbxScene( const std::string& pName, FbxScene* pScene )
 {
     // Create the Object to store the data from this scene.
     Objects.push_back(WorldObject());
     WorldObject& lObject = Objects.back();
-    lObject.Name = pName;
+    lObject.FileName = pName;
 
     // First we can grab all the textures and materials that are used
     // in this scene so lets go ahead and do that. 
@@ -131,7 +140,7 @@ WorldObject* World_ImportFbxScene(const std::string& pName, FbxScene* pScene )
     return &lObject;
 }
 
-WorldObject* World_GetObjectByName(const std::string& name)
+/*WorldObject* World_GetObjectByName(const std::string& name)
 {
     for (auto& o : Objects) 
     {
@@ -141,15 +150,36 @@ WorldObject* World_GetObjectByName(const std::string& name)
         }
     }
     return nullptr;
+}*/
+
+WorldActor* 
+World_RayCast(/*World*/ NsRay& aRay)
+{
+    //@todo: [jared.watt, 22/04/20]
+    //  We need to sort these objects by distance from the ray origin 
+    //  so that the returned object is the closest rather than the 
+    //  first.
+
+    FbxVector4 lOut;
+    for (auto& lActor : Instances) {        
+        NsAxisAlignedBox lAabb = WorldActor_GetBounds(&lActor);
+        if (Intersect(aRay, lAabb, &lOut)) {
+            return &lActor;
+        }
+    }
+    return nullptr;
 }
 
-void World_AddInstance(FbxVector4 pPosition, WorldObject* pObject) 
+void 
+World_AddInstance(FbxVector4 pPosition, WorldObject* pObject, const std::string& aName) 
 {
     // Add it to an instance.
-    Instances.push_back(Instance());
-    Instance& instance = Instances.back();
-    ConvertFbxToLinmath( pPosition, instance.WorldPosition.position, 3 );
+    Instances.push_back(WorldActor());
+    WorldActor& instance = Instances.back();
+    instance.WorldPosition.Position = pPosition;
+    instance.WorldPosition.Rotation = FbxQuaternion();
     instance.Object = pObject;
+    instance.Name = aName;
 }
 
 void World_Draw()
@@ -158,7 +188,8 @@ void World_Draw()
     {
         for (auto& lMesh : lInstance.Object->Meshes) 
         {
-            DrawMeshCache(lMesh, lInstance.WorldPosition.position);
+            DrawMeshCache(lMesh, lInstance.WorldPosition.Position, 
+                lInstance.WorldPosition.Rotation);
         }
     }
 }

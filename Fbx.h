@@ -3,7 +3,7 @@
 
 #include "Common.h"
 #include "RenderObjects.h"
-
+#include "AxisAlignedBox.h"
 
 void InitFbx();
 
@@ -21,5 +21,7 @@ TextureCache* InitializeTextureCache( const FbxTexture * pTexture );
 MaterialCache* InitializeMaterialCache( const FbxSurfaceMaterial * pMaterial );
 LightCache* InitializeLightCache(const FbxLight * pLight);
 MeshCache* InitializeMeshCache( const FbxMesh* pMesh );
+
+NsAxisAlignedBox Fbx_CalculateBounds( const FbxMesh* pMesh );
 
 #endif // FBX_HPP__
