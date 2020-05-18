@@ -61,7 +61,7 @@ WorldObject* World_ImportFbxScene(const std::string& name, /*const*/ FbxScene * 
 
 WorldActor* World_RayCast(/*World*/ NsRay& aRay);
 
-void World_AddInstance(FbxVector4 pLocation, WorldObject* pObject, const std::string& Name);
+WorldActor* World_AddInstance(FbxVector4 pLocation, WorldObject* pObject, const std::string& Name);
 
 void World_Draw();
 

@@ -9,7 +9,9 @@
 			"new": "cpp",
 			"cmath": "cpp",
 			"random": "cpp",
-			"limits": "cpp"
+			"limits": "cpp",
+			"algorithm": "cpp",
+			"functional": "cpp"
 		},
 		"buck.projectConfig": {
 			"projectPath": "/home/jared/Documents/sandbox/playground",

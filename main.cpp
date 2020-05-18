@@ -1,10 +1,13 @@
 
 #include "Common.h"
+#include "NsActionTypes.h"
 #include "Camera.h"
+#include "dispatch_queue.h"
 #include "DrawScene.h"
 #include "Fbx.h"
 #include "Grid.h"
 #include "Intersect.h"
+#include "NsMovement.h"
 #include "Plane.h"
 #include "RenderObjects.h"
 #include "RenderPipeline.h"
@@ -45,6 +48,8 @@ cursor_position_callback(
     sMousePos[1] = ypos;
 }
 
+WorldActor* Player_Character;
+
 static void 
 mouse_button_callback(
     GLFWwindow* window, 
@@ -59,12 +64,26 @@ mouse_button_callback(
         NsRay         lRay         = Camera_ScreenToRay(sMousePos);
         FbxVector4    lHitPoint;
             
-        const WorldActor* lSelectedObject = World_RayCast(lRay);
+        WorldActor* lSelectedObject = World_RayCast(lRay);
         if (lSelectedObject) {
             printf("Object (%s) was clicked\n", lSelectedObject->Name.c_str());
         }
         else if (Intersect(lRay, kGroundPlane, &lHitPoint)) {
             printf("Ground was hit at [%.2f,%.2f]\n", lHitPoint[0], lHitPoint[2]);
+
+            //@note: [jared.watt 01/05/2020]
+            //  Ground click was detected;
+            //      * Create the action struct
+            //      * Pass the movement request to the dispatch queue.
+
+            const double kMaxSpeed = 5.0;
+
+            NsMoveActionContext action;
+            action.Actor = Player_Character;
+            action.Target = lHitPoint;
+            action.MaxSpeed = kMaxSpeed;
+            DispatchQueue_AddAction(static_cast<int>(ActionTypes::MoveActor), 
+                &action, sizeof(NsMoveActionContext));
         }
         else {
             printf("Nothing was clicked\n");
@@ -166,8 +185,8 @@ main(
     // in app logic representations.
 
     WorldObject* lFileObject = World_ImportFbxScene( filename, lScene );
-    World_AddInstance( FbxVector4(50,0,0), lFileObject, "obj1" );
-    World_AddInstance( FbxVector4(-50,0,0), lFileObject, "obj2" );
+    Player_Character         = World_AddInstance( FbxVector4(0,0,0), lFileObject, "obj1" );
+    //World_AddInstance( FbxVector4(-50,0,0), lFileObject, "obj2" );
 
     //@Note: [Jared.Watt, 21/04/2020]
     //  It would be great to be able to get an AABB from the WorldObject, 
@@ -177,7 +196,8 @@ main(
     // 
     //  I'm not sure what file that should belong to.  Will add it to world
     //  for now...
-    NsAxisAlignedBox aabb = WorldObject_GetBounds(lFileObject);
+    //NsAxisAlignedBox aabb = WorldObject_GetBounds(lFileObject);
+
 
 //
 // Setup the RenderPipeline Objects.
@@ -198,8 +218,70 @@ main(
     MeshCache lGridCache = InitializeMeshCache(&lGrid);
     //@todo: Add the ground plane to the world [jared.watt]
 
-    while (!glfwWindowShouldClose(window))
-    {   
+    while (!glfwWindowShouldClose(window)) {   
+
+        //@note: [jared.watt 01/05/2020]
+        //  I want to implement some form of localised action/event system for the 
+        //  game for many reasons, some of which include;
+        //    * A simple way to add new behaviour
+        //    * A way to modify existing actions
+        //    * feels like a strong way to implement server/client logic.
+        //  This has many names, dispatch queue, message loops etc.  Professionally 
+        //  I've seen this on a per thread basis, I dont think this will be 
+        //  necessary in this instance but its a useful thing to be aware of
+        //  that it works on larger scale more interesting domains.
+
+        //  It will be the "main" loop for this application and is handled here.
+        //  In its most basic form, simply a switch statement.
+        //    switch (lNextAction)
+        //    {
+        //    case Action:
+        //    }
+        //  Or it could be done by registering a type of action and a
+        //  callback or something?
+
+        // For now I'm going to go the switch route, but will definitely 
+        // consider the alternative.
+
+        int lActionCount = DispatchQueue_GetActionCount();
+
+        //@todo: [jared.watt 01/05/2020]
+        //  Should I be looping all of the available actions?
+        while (lActionCount > 0) {
+
+            // Grab the action and any context.
+            void* lActionContext;
+            std::size_t lActionContextSize;
+            ActionTypes lNextAction = static_cast<ActionTypes>(DispatchQueue_GetNextAction(
+                &lActionContext, &lActionContextSize));
+
+            // Act upon the action.
+            switch (lNextAction) {
+            case ActionTypes::MoveActor:
+                {
+                    //@Todo: [jared.watt,23/04/2020]
+                    //  Incorporate rotations?
+
+                    //@Note: [jared.watt 01/05/2020]
+                    //  Cast the context to the move action context.
+                    //  Add the designated actor to the movement system.
+                    assert(lActionContext);
+                    NsMoveActionContext* lMoveContext = 
+                        static_cast<NsMoveActionContext*>(lActionContext);
+                    MovementSystem_Add(lMoveContext->Actor, lMoveContext->Target, 
+                        lMoveContext->MaxSpeed);
+                }
+            }
+            
+            //@todo: [jared.watt 01/05/2020] 
+            //  Handle time delayed actions, or actions which weren't
+            //  successfully processed.
+
+            // Pop this action from the queue
+            DispatchQueue_PopAction();
+            --lActionCount;
+        }
+
         float ratio;
         int lWindowWidth, lWindowHeight;
         glfwGetFramebufferSize(window, &lWindowWidth, &lWindowHeight);
@@ -210,12 +292,14 @@ main(
         // Draw the front face only, except for the texts and lights.
         glEnable(GL_CULL_FACE);
 
-
         // Set the view to the current camera settings.
         //@Todo: this function should really exist in the RenderObject
         //   RenderPipeline space rather than in camera.
         Camera_SetViewportAndCamera(lWindowWidth, lWindowHeight);
 
+    
+        MovementSystem_Update();
+        
         // Draw the World
         //InitializeLights( lScene );
         World_Draw();

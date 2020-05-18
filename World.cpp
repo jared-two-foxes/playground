@@ -170,7 +170,7 @@ World_RayCast(/*World*/ NsRay& aRay)
     return nullptr;
 }
 
-void 
+WorldActor* 
 World_AddInstance(FbxVector4 pPosition, WorldObject* pObject, const std::string& aName) 
 {
     // Add it to an instance.
@@ -180,6 +180,7 @@ World_AddInstance(FbxVector4 pPosition, WorldObject* pObject, const std::string&
     instance.WorldPosition.Rotation = FbxQuaternion();
     instance.Object = pObject;
     instance.Name = aName;
+    return &instance;
 }
 
 void World_Draw()
