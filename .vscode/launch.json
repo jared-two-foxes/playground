@@ -5,10 +5,22 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "(Windows) Launch",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bazel-bin/demo.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "preLaunchTask": "bazel build"
+        },
+        {
             "name": "Debug Playground",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/buck-out/gen/demo#debug",
+            "program": "${workspaceFolder}/bazel-bin/demo.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -21,8 +33,8 @@
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
-            ]
-            "preLaunchTask": "buck build"
+            ],
+            "preLaunchTask": "bazel build"
         }
     ]
 }

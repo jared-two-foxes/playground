@@ -12,12 +12,6 @@
 			"limits": "cpp",
 			"algorithm": "cpp",
 			"functional": "cpp"
-		},
-		"buck.projectConfig": {
-			"projectPath": "/home/jared/Documents/sandbox/playground",
-			"flavor": [],
-			"target": "//:demo",
-			"platform": "linux-x86_64"
 		}
 	}
 }

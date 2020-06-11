@@ -4,9 +4,9 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "buck build",
+            "label": "bazel build",
             "type": "shell",
-            "command": "buck build :demo#debug",
+            "command": "bazel build :demo",
             "group": {
                 "kind": "build",
                 "isDefault": true

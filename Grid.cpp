@@ -98,7 +98,7 @@ MeshCache InitializeMeshCache(const Grid* pGrid)
     cache.HasNormal = true;
     cache.HasUV = false;
     cache.AllByControlPoints = false;
-    cache.SubMeshes.push_back({0, lTriangleCount});
+    cache.SubMeshes.push_back({0, (uint16_t)lTriangleCount});
 
     glGenBuffers( 1, &cache.VBONames[MeshCache::VERTEX_VBO] );
     glBindBuffer( GL_ARRAY_BUFFER, cache.VBONames[MeshCache::VERTEX_VBO] );

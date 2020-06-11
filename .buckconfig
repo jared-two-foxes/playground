@@ -1,5 +1,0 @@
-[project]
-  ignore = .git
-
-[cxx#debug]
-  cxxflags = -g
