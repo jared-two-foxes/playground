@@ -20,7 +20,7 @@
             "name": "Debug Playground",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bazel-bin/demo.exe",
+            "program": "${workspaceFolder}/bazel-bin/demo",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

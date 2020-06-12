@@ -32,7 +32,8 @@
 *.app
 
 # Temp Folders
-/bazel-bin/
-/bazel-out/
-/bazel-playground/
-/bazel-testlogs/
+bazel-bin
+bazel-out
+bazel-playground
+bazel-testlogs
+
